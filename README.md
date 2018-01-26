@@ -1,8 +1,8 @@
 # haro-python-sdk
-Haro.ai Python Library
+[Haro.ai](https://haro.ai/) Python Library
 
 This library is a thin wrapper around Haro's Events and Prediction API.
-See the Haro.ai documentation for more details. 
+See the [Haro.ai](https://haro.ai/) documentation for more details. 
 
 ## Example Usage:
 

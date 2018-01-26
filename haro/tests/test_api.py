@@ -29,6 +29,12 @@ class TestEvent(TestCase):
                       user="u1", context={"k1": "v1"})
         with self.assertRaises(ValueError):
             e.validate()
+        # Invalid timestamp
+        e = api.Event(id="event-id-1", action="action_1", item="item-1", timestamp=10**100,
+                      user="u1", context={"k1": "v1"})
+        with self.assertRaises(ValueError):
+            e.validate()
+
         # Invalid context
         e = api.Event(id="event-id-1", action="action_1", item="item-1", timestamp=now,
                       user="u1", context="I am not a dictionary")

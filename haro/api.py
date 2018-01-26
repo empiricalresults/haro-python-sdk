@@ -3,11 +3,13 @@ import re
 
 import os
 
+import datetime
 import requests
 from requests import HTTPError
 from urllib3.exceptions import RequestError
+from six import string_types
 
-ALPHA_NUMERIC_REGEX = "^[a-zA-Z0-9_-]{2,128}$"
+ALPHA_NUMERIC_REGEX = "^[a-zA-Z0-9_-]{1,128}$"
 
 _EVENTS_API_ENDPOINT = "https://events.haro.io"
 _EVENTS_API_VERSION = "v16.10"
@@ -58,15 +60,19 @@ class Event(object):
             if not re.match(ALPHA_NUMERIC_REGEX, value):
                 raise ValueError("{} is an invalid value for {}".format(value, required_alphanumeric))
         try:
-            _ = int(self.timestamp)
-        except (ValueError, TypeError):
+            ts = int(self.timestamp)
+        except (ValueError, TypeError, OverflowError):
             raise ValueError("timestamp must be an int, got: {}".format(self.timestamp))
+        try:
+            _ = datetime.datetime.fromtimestamp(ts / 1000)
+        except (OverflowError, ValueError):
+            raise ValueError("timestamp is not valid: {}".format(self.timestamp))
         if not isinstance(self.context, dict):
             raise ValueError("Event context must be a dictionary. Got: {}".format(self.context))
         for (k, v) in self.context.items():
             if not re.match(ALPHA_NUMERIC_REGEX, k):
                 raise ValueError("{} is an invalid context key".format(k))
-            if not isinstance(v, (int, float, str)):
+            if not isinstance(v, (int, float)) and not isinstance(v, string_types):
                 raise ValueError("context values must either be numeric or string. Got: ".format(v))
 
 
