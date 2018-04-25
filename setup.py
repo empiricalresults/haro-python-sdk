@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 if __name__ == '__main__':
     setup(
         name='haro',
-        version='2018.01',
+        version='2018.4',
         description='Haro.ai Python Library',
         long_description="A thin wrapper for making calls to Haro events and prediction REST API's",
         url="https://github.com/empiricalresults/haro-python-sdk",

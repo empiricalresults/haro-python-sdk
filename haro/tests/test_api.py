@@ -14,6 +14,10 @@ class TestEvent(TestCase):
         e = api.Event(id="event-id-1", action="action_1", item="item-1", timestamp=now,
                       user="u1", context={"k1": "v1", "K-e-y-2": 3.1415})
         e.validate()
+        # dot is valid
+        e = api.Event(id="event.id.1", action="action_1", item="item-1", timestamp=now,
+                      user="u1", context={"k.1": "v1", "K-e-y-2": 3.1415})
+        e.validate()
         # Non alphanumeric action
         e = api.Event(id="event-id-1", action="a1?", item="i1", timestamp=now, user="u1",
                       context={"k1": "v1"})
