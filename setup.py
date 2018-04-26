@@ -1,11 +1,12 @@
 from setuptools import setup, find_packages
 
 if __name__ == '__main__':
+    long_desc = "A thin wrapper for making calls to Haro (https://haro.ai) events and prediction REST API's"
     setup(
         name='haro',
-        version='2018.4',
+        version='2018.4.26',
         description='Haro.ai Python Library',
-        long_description="A thin wrapper for making calls to Haro events and prediction REST API's",
+        long_description=long_desc,
         url="https://github.com/empiricalresults/haro-python-sdk",
         author='Empirical Results Inc.',
         author_email='info@haro.ai',
@@ -18,6 +19,7 @@ if __name__ == '__main__':
         tests_require=[
             'requests-mock==1.4.0',
         ],
+        test_suite="haro.tests",
         classifiers=[
             "Programming Language :: Python :: 3.5",
             "Programming Language :: Python :: 2.7",

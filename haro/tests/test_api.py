@@ -107,3 +107,45 @@ class TestHaroAPIClient(TestCase):
         haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
         r = haro_api.anticipate(pid="anticipate-condition-eebc14df57-within-3-hours", user="u1", name="v2")
         self.assertEqual(r.value, 0.79)
+
+    @requests_mock.mock()
+    def test_all_predictions(self, m):
+        api_result = [
+            {
+                "pid": "rank-items-for-action-watch",
+                "name": "rank-watch",
+                "predictions": {
+                    'entities': ['item-3', 'item-1', 'item-2'], 'scores': [0.79, 0.43, 0.05]
+                },
+            },
+            {
+                "pid": "predict-avg-context-for-action-watch-context-duration_seconds",
+                "name": "avg-duration",
+                "predictions": {
+                    'value': 31.41
+                },
+            },
+            {
+                "pid": "anticipate-condition-eebc14df57-within-3-hours",
+                "name": "anticipate-watch",
+                "predictions": {
+                    'value': 0.79
+                },
+            },
+        ]
+        m.get('http://test-prediction-api/v42.526/all-predictions/user/u1/', text=json.dumps(api_result))
+        haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
+        results = haro_api.all_predictions(user="u1")
+        self.assertEquals(len(results), 3)
+        r1, r2, r3 = results
+        self.assertEquals(r1.pid, "rank-items-for-action-watch")
+        self.assertEquals(r1.name, "rank-watch")
+        self.assertEquals(r1.entities, ['item-3', 'item-1', 'item-2'])
+        self.assertEqual(r1.scores, [0.79, 0.43, 0.05])
+        self.assertEquals(r2.pid, "predict-avg-context-for-action-watch-context-duration_seconds")
+        self.assertEquals(r2.name, "avg-duration")
+        self.assertEquals(r2.value, 31.41)
+        self.assertEquals(r3.pid, "anticipate-condition-eebc14df57-within-3-hours")
+        self.assertEquals(r3.name, "anticipate-watch")
+        self.assertEquals(r3.value, 0.79)
+

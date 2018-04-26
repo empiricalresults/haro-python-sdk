@@ -170,7 +170,9 @@ class HaroAPIClient(object):
         except (HTTPError, RequestError) as e:
             raise IOError("Unable to make a rank prediction. Error was: {}".format(e))
         response = r.json()
-        return RankResult(entities=response['entities'], scores=response.get('scores', None))
+        return RankResult(entities=response['entities'],
+                          scores=response.get('scores', None),
+                          pid=pid, name=name)
 
     def predict(self, pid, user, name=None):
         """
@@ -196,7 +198,7 @@ class HaroAPIClient(object):
         except (HTTPError, RequestError) as e:
             raise IOError("Unable to make a numerical prediction. Error was: {}".format(e))
         response = r.json()
-        return NumericPredictionResult(value=response['value'])
+        return NumericPredictionResult(value=response['value'], pid=pid, name=name)
 
     def anticipate(self, pid, user, name=None):
         """
@@ -223,20 +225,92 @@ class HaroAPIClient(object):
         except (HTTPError, RequestError) as e:
             raise IOError("Unable to make an anticipate prediction. Error was: {}".format(e))
         response = r.json()
-        return AnticipateResult(value=response['value'])
+        return AnticipateResult(value=response['value'], pid=pid, name=name)
+
+    def all_predictions(self, user, top=None, include_scores=False):
+        """
+        Returns all predictions for given user from the current active predictors
+
+        Args:
+            user (str): User id. Must match the user id sent in events
+            top (int or None): Limit the returned ranked values to top k.(for rank predictors)
+            include_scores (bool): If true, the API will also send relative item scores (for rank predictors)
+        Returns:
+            list of PredictionResult: list of prediction results from active predictors
+        """
+        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                           "all-predictions", "user", user, "")
+        headers = self._build_request_headers()
+        params = {}
+        if top is not None:
+            params['top'] = top
+        if include_scores is not None:
+            params['include_scores'] = include_scores
+        r = requests.get(url, headers=headers, params=params)
+        try:
+            r.raise_for_status()
+        except (HTTPError, RequestError) as e:
+            raise IOError("Unable to get all user predictions. Error was: {}".format(e))
+        response = r.json()
+        prediction_results = []
+        for result in response:
+            pid = result['pid']
+            pred_type = self._get_predictor_type_from_pid(pid)
+            if pred_type == "rank":
+                prediction_result = RankResult(
+                    entities=result['predictions']['entities'],
+                    scores=result['predictions'].get('scores', None),
+                    pid=pid, name=result['name'])
+            elif pred_type == 'predict':
+                prediction_result = NumericPredictionResult(
+                    value=result['predictions']['value'],
+                    pid=pid, name=result['name'])
+            elif pred_type == 'anticipate':
+                prediction_result = AnticipateResult(
+                    value=result['predictions']['value'],
+                    pid=pid, name=result['name'])
+            else:
+                continue
+            prediction_results.append(prediction_result)
+        return prediction_results
+
+    @staticmethod
+    def _get_predictor_type_from_pid(pid):
+        for predictor_type in ('rank', 'predict', 'anticipate'):
+            if pid.startswith(predictor_type):
+                return predictor_type
+        raise ValueError("Unknown predictor type in pid: {}".format(pid))
 
 
-class RankResult(object):
+class PredictionResult(object):
+    """
+    Represents a single  prediction for a user
+    """
+
+    def __init__(self, pid, name):
+        """
+        Args:
+            pid (str): Predictor identifier that generated this prediction
+            name (str): Predictor custom that generated this prediction
+        """
+        self.pid = pid
+        self.name = name
+
+
+class RankResult(PredictionResult):
     """
     Represents a single ranking prediction for a user
     """
 
-    def __init__(self, entities, scores):
+    def __init__(self, entities, scores, pid, name):
         """
         Args:
             entities (list of str): list of item or categorical context values.
             scores (list of float or None): list of relative scores, populated when include_scores is used.
+            pid (str): Predictor identifier that generated this prediction
+            name (str): Predictor custom that generated this prediction
         """
+        super(RankResult, self).__init__(pid, name)
         self.entities = entities
         self.scores = scores
 
@@ -244,32 +318,38 @@ class RankResult(object):
         return "RankResult(entities={self.entities}, scores={self.scores})".format(self=self)
 
 
-class NumericPredictionResult(object):
+class NumericPredictionResult(PredictionResult):
     """
     Represents a single numerical prediction for a user
     """
 
-    def __init__(self, value):
+    def __init__(self, value, pid, name):
         """
         Args:
             value (float): numerical value predicted
+            pid (str): Predictor identifier that generated this prediction
+            name (str): Predictor custom that generated this prediction
         """
+        super(NumericPredictionResult, self).__init__(pid, name)
         self.value = value
 
     def __str__(self):
         return "NumericPredictionResult(value={self.value})".format(self=self)
 
 
-class AnticipateResult(object):
+class AnticipateResult(PredictionResult):
     """
     Represents a single anticipate prediction for a user
     """
 
-    def __init__(self, value):
+    def __init__(self, value, pid, name):
         """
         Args:
             value (float): probability of anticipated event happening for the given user
+            pid (str): Predictor identifier that generated this prediction
+            name (str): Predictor custom that generated this prediction
         """
+        super(AnticipateResult, self).__init__(pid, name)
         self.value = value
 
     def __str__(self):
