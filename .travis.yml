@@ -9,6 +9,8 @@ python:
 
 
 install:
+  - pip install --upgrade pip
+  - pip install --upgrade setuptools
   - pip install -e .
   - pip install requests-mock==1.4.0
 
