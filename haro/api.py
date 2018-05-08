@@ -39,9 +39,12 @@ class Event(object):
         self.id = id
         self.action = action
         self.item = item
-        self.timestamp = timestamp
         self.user = user
         self.context = context or {}
+        try:
+            self.timestamp = int(timestamp)
+        except (ValueError, TypeError, OverflowError):
+            raise ValueError("timestamp must be an int, got: {}".format(timestamp))
 
     def as_dict(self):
         return dict(id=self.id, action=self.action, item=self.item,
@@ -57,14 +60,14 @@ class Event(object):
             value = getattr(self, required_alphanumeric, None)
             if value is None:
                 raise ValueError("{} is required".format(required_alphanumeric))
-            if not re.match(ALPHA_NUMERIC_REGEX, value):
+            try:
+                match = re.match(ALPHA_NUMERIC_REGEX, value)
+            except TypeError:
+                match = False
+            if not match:
                 raise ValueError("{} is an invalid value for {}".format(value, required_alphanumeric))
         try:
-            ts = int(self.timestamp)
-        except (ValueError, TypeError, OverflowError):
-            raise ValueError("timestamp must be an int, got: {}".format(self.timestamp))
-        try:
-            _ = datetime.datetime.fromtimestamp(ts / 1000)
+            _ = datetime.datetime.fromtimestamp(self.timestamp / 1000.0)
         except (OverflowError, ValueError):
             raise ValueError("timestamp is not valid: {}".format(self.timestamp))
         if not isinstance(self.context, dict):
@@ -97,8 +100,9 @@ class HaroAPIClient(object):
         Args:
             events (list of Event): list of Event objects to send to Haro
             validate (bool): when True, do validation before sending the events
+                When false, the server will accept all valid events and ignore invalid events
         Returns:
-           int: number of events successfully delivered
+           (int, list): number of events successfully delivered, and a list of errors
         Raises:
             IOError: in case of http issues
             ValueError: in case of invalid events
@@ -106,27 +110,35 @@ class HaroAPIClient(object):
         if validate:
             for e in events:
                 e.validate()
-        return self._send_events_with_retry(events, num_retries=_MAX_RETRIES)
+        return self._send_events_with_retry(events, validate=validate, num_retries=_MAX_RETRIES)
 
-    def _send_events_with_retry(self, events, num_retries):
+    def _send_events_with_retry(self, events, validate, num_retries):
         """
         Args:
             events (list of Event):
         Returns:
-            int: number of events successfully delivered
+            (int, list): number of events successfully delivered, and a list of errors
         """
 
         headers = self._build_request_headers()
         url = os.path.join(_EVENTS_API_ENDPOINT, _EVENTS_API_VERSION, "events")
-        r = requests.post(url, headers=headers, json=[e.as_dict() for e in events])
+        params = {}
+        if not validate:
+            params['ignore_invalid'] = True
+        data = [e.as_dict() for e in events]
+        r = requests.post(url, headers=headers, json=data, params=params)
+        if r.status_code == 400 and r.content and r.json():
+            raise ValueError("Server event validation failed. Server message was: {}".format(r.json()))
         try:
             r.raise_for_status()
         except (HTTPError, RequestError) as e:
             if num_retries > 0:
-                return self._send_events_with_retry(events, num_retries=num_retries - 1)
+                return self._send_events_with_retry(events, validate=validate, num_retries=num_retries - 1)
             raise IOError("Unable to send events to Haro. Original error was: {}".format(e))
         data = r.json()
-        return data.get('count', 0)
+        errors = data.get('errors', [])
+        num_sent = data.get('count', 0)
+        return num_sent, errors
 
     def _build_request_headers(self):
         headers = {

@@ -29,10 +29,9 @@ class TestEvent(TestCase):
         with self.assertRaises(ValueError):
             e.validate()
         # Missing timestamp
-        e = api.Event(id="event-id-1", action="action_1", item="item-1", timestamp=None,
-                      user="u1", context={"k1": "v1"})
         with self.assertRaises(ValueError):
-            e.validate()
+            api.Event(id="event-id-1", action="action_1", item="item-1", timestamp=None,
+                          user="u1", context={"k1": "v1"})
         # Invalid timestamp
         e = api.Event(id="event-id-1", action="action_1", item="item-1", timestamp=10**100,
                       user="u1", context={"k1": "v1"})
@@ -73,8 +72,9 @@ class TestHaroAPIClient(TestCase):
         e2 = api.Event(id="event-id-2", action="action-2", item="item-2", timestamp=now,
                        user="u1", context={})
         haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
-        num_sent = haro_api.send_events([e1, e2])
+        num_sent, errors = haro_api.send_events([e1, e2])
         self.assertEqual(num_sent, 2)
+        self.assertEqual(errors, [])
         self.assertEqual(m.last_request.json(),
                          [{'action': 'action_1', 'user': 'u1',
                            'context': {'k1': 'v1', 'k2': 3.1415},
