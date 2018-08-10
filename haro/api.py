@@ -239,6 +239,32 @@ class HaroAPIClient(object):
         response = r.json()
         return AnticipateResult(value=response['value'], pid=pid, name=name)
 
+    def custom(self, pid, user, name=None):
+        """
+        Returns a custom prediction for a given user [advanced usage]
+
+        Args:
+            pid (str): Predictor identifier
+            user (str): User id. Must match the user id sent in events
+            name (str or None): Optional custom name for the predictor
+        Returns:
+            CustomResult: containing the custom value
+                   "
+        """
+        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                           "custom", pid, "user", user, "")
+        headers = self._build_request_headers()
+        params = {}
+        if name is not None:
+            params['name'] = name
+        r = requests.get(url, headers=headers, params=params)
+        try:
+            r.raise_for_status()
+        except (HTTPError, RequestError) as e:
+            raise IOError("Unable to make a custom prediction. Error was: {}".format(e))
+        response = r.json()
+        return CustomResult(value=response['value'], pid=pid, name=name)
+
     def all_predictions(self, user, top=None, include_scores=False):
         """
         Returns all predictions for given user from the current active predictors
@@ -281,6 +307,10 @@ class HaroAPIClient(object):
                 prediction_result = AnticipateResult(
                     value=result['predictions']['value'],
                     pid=pid, name=result['name'])
+            elif pred_type == 'custom':
+                prediction_result = CustomResult(
+                    value=result['predictions']['value'],
+                    pid=pid, name=result['name'])
             else:
                 continue
             prediction_results.append(prediction_result)
@@ -288,7 +318,7 @@ class HaroAPIClient(object):
 
     @staticmethod
     def _get_predictor_type_from_pid(pid):
-        for predictor_type in ('rank', 'predict', 'anticipate'):
+        for predictor_type in ('rank', 'predict', 'anticipate', 'custom'):
             if pid.startswith(predictor_type):
                 return predictor_type
         raise ValueError("Unknown predictor type in pid: {}".format(pid))
@@ -366,3 +396,22 @@ class AnticipateResult(PredictionResult):
 
     def __str__(self):
         return "AnticipateResult(value={self.value})".format(self=self)
+
+
+class CustomResult(PredictionResult):
+    """
+    Represents a custom prediction for a user [for advanced usage]
+    """
+
+    def __init__(self, value, pid, name):
+        """
+        Args:
+            value (float): numerical value predicted
+            pid (str): Predictor identifier that generated this prediction
+            name (str): Predictor custom that generated this prediction
+        """
+        super(CustomResult, self).__init__(pid, name)
+        self.value = value
+
+    def __str__(self):
+        return "CustomResult(value={self.value})".format(self=self)
