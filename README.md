@@ -9,7 +9,7 @@ See the [Haro.ai](https://haro.ai/) documentation for more details.
 ### Events API
     from haro.api import HaroAPIClient, Event
     api =  HaroAPIClient(api_id='your api id', api_key='your apii key')
-    now = int(datetime.datetime.utcnow().timestamp() * 1000)
+    now = int(datetime.datetime.now(tz=pytz.UTC).timestamp() * 1000)
     e = Event(id="eid-34812", user="user-31415", action="watch", item="m-9754", 
                timestamp=now,  context={"duration_seconds": 35})
     api.send_events([e])
