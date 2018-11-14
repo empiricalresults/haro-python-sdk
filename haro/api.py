@@ -1,7 +1,7 @@
 import json
 import re
 
-import os
+import posixpath
 
 import datetime
 import requests
@@ -121,7 +121,7 @@ class HaroAPIClient(object):
         """
 
         headers = self._build_request_headers()
-        url = os.path.join(_EVENTS_API_ENDPOINT, _EVENTS_API_VERSION, "events")
+        url = posixpath.join(_EVENTS_API_ENDPOINT, _EVENTS_API_VERSION, "events")
         params = {}
         if not validate:
             params['ignore_invalid'] = True
@@ -164,7 +164,7 @@ class HaroAPIClient(object):
                 , and if include_scores is True, list of relative scores
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
                            "rank", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
@@ -198,7 +198,7 @@ class HaroAPIClient(object):
             NumericPredictionResult: containing the predicted value
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
                            "predict", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
@@ -225,7 +225,7 @@ class HaroAPIClient(object):
             the given user
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
                            "anticipate", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
@@ -251,7 +251,7 @@ class HaroAPIClient(object):
             CustomResult: containing the custom value
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
                            "custom", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
@@ -276,7 +276,7 @@ class HaroAPIClient(object):
         Returns:
             list of PredictionResult: list of prediction results from active predictors
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
                            "all-predictions", "user", user, "")
         headers = self._build_request_headers()
         params = {}
