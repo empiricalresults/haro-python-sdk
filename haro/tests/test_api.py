@@ -85,28 +85,44 @@ class TestHaroAPIClient(TestCase):
     @requests_mock.mock()
     def test_rank(self, m):
         m.get('http://test-prediction-api/v42.526/rank/rank-items-for-action-watch/user/u1/',
-              text=json.dumps({'entities': ['item-3', 'item-1', 'item-2'], 'scores': [0.79, 0.43, 0.05]}))
+              text=json.dumps({'entities': ['item-3', 'item-1', 'item-2'], 'scores': [0.79, 0.43, 0.05]}),
+              headers={'X-ADDITIONAL-INFO': 'some-value', 'other-headers': 'present'})
         haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
         r = haro_api.rank(pid="rank-items-for-action-watch", user="u1", subset=['item-1', 'item-2', 'item-3'],
                           include_scores=True)
         self.assertEqual(r.entities, ['item-3', 'item-1', 'item-2'])
         self.assertEqual(r.scores, [0.79, 0.43, 0.05])
+        self.assertEqual(r.meta, {"ADDITIONAL-INFO": "some-value"})
 
     @requests_mock.mock()
     def test_predict(self, m):
         m.get('http://test-prediction-api/v42.526/predict/predict-avg-context-for-action-watch-context-duration_seconds/user/u1/',
-              text=json.dumps({'value': 31.41}))
+              text=json.dumps({'value': 31.41}),
+              headers={'X-ADDITIONAL-INFO': 'some-value', 'other-headers': 'present'})
         haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
         r = haro_api.predict(pid="predict-avg-context-for-action-watch-context-duration_seconds", user="u1")
         self.assertEqual(r.value, 31.41)
+        self.assertEqual(r.meta, {"ADDITIONAL-INFO": "some-value"})
 
     @requests_mock.mock()
     def test_anticipate(self, m):
         m.get('http://test-prediction-api/v42.526/anticipate/anticipate-condition-eebc14df57-within-3-hours/user/u1/',
-              text=json.dumps({'value': 0.79}))
+              text=json.dumps({'value': 0.79}),
+              headers={'X-ADDITIONAL-INFO': 'some-value', 'other-headers': 'present'})
         haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
         r = haro_api.anticipate(pid="anticipate-condition-eebc14df57-within-3-hours", user="u1", name="v2")
         self.assertEqual(r.value, 0.79)
+        self.assertEqual(r.meta, {"ADDITIONAL-INFO": "some-value"})
+
+    @requests_mock.mock()
+    def test_custom(self, m):
+        m.get('http://test-prediction-api/v42.526/custom/custom-predictor-for-home-page/user/u1/',
+              text=json.dumps({'value': {"custom-values": [3, 1, 4]}}),
+              headers={'X-ADDITIONAL-INFO': 'some-value', 'other-headers': 'present'})
+        haro_api = api.HaroAPIClient(api_id="test-api-id", api_key="test-api-key")
+        r = haro_api.custom(pid="custom-predictor-for-home-page", user="u1", name="v2")
+        self.assertEqual(r.value, {"custom-values": [3, 1, 4]})
+        self.assertEqual(r.meta, {"ADDITIONAL-INFO": "some-value"})
 
     @requests_mock.mock()
     def test_all_predictions(self, m):
@@ -148,4 +164,3 @@ class TestHaroAPIClient(TestCase):
         self.assertEquals(r3.pid, "anticipate-condition-eebc14df57-within-3-hours")
         self.assertEquals(r3.name, "anticipate-watch")
         self.assertEquals(r3.value, 0.79)
-

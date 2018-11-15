@@ -4,7 +4,7 @@ if __name__ == '__main__':
     long_desc = "A thin wrapper for making calls to Haro (https://haro.ai) events and prediction REST API's"
     setup(
         name='haro',
-        version='2018.8.9',
+        version='2018.11.15',
         description='Haro.ai Python Library',
         long_description=long_desc,
         url="https://github.com/empiricalresults/haro-python-sdk",

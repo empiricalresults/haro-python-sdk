@@ -1,7 +1,7 @@
 import json
 import re
 
-import os
+import posixpath
 
 import datetime
 import requests
@@ -121,7 +121,7 @@ class HaroAPIClient(object):
         """
 
         headers = self._build_request_headers()
-        url = os.path.join(_EVENTS_API_ENDPOINT, _EVENTS_API_VERSION, "events")
+        url = posixpath.join(_EVENTS_API_ENDPOINT, _EVENTS_API_VERSION, "events")
         params = {}
         if not validate:
             params['ignore_invalid'] = True
@@ -164,8 +164,8 @@ class HaroAPIClient(object):
                 , and if include_scores is True, list of relative scores
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
-                           "rank", pid, "user", user, "")
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                             "rank", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
         if subset is not None:
@@ -184,7 +184,8 @@ class HaroAPIClient(object):
         response = r.json()
         return RankResult(entities=response['entities'],
                           scores=response.get('scores', None),
-                          pid=pid, name=name)
+                          pid=pid, name=name,
+                          meta=_get_meta_from_response_headers(r))
 
     def predict(self, pid, user, name=None):
         """
@@ -198,8 +199,8 @@ class HaroAPIClient(object):
             NumericPredictionResult: containing the predicted value
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
-                           "predict", pid, "user", user, "")
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                             "predict", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
         if name is not None:
@@ -210,7 +211,8 @@ class HaroAPIClient(object):
         except (HTTPError, RequestError) as e:
             raise IOError("Unable to make a numerical prediction. Error was: {}".format(e))
         response = r.json()
-        return NumericPredictionResult(value=response['value'], pid=pid, name=name)
+        return NumericPredictionResult(value=response['value'], pid=pid, name=name,
+                                       meta=_get_meta_from_response_headers(r))
 
     def anticipate(self, pid, user, name=None):
         """
@@ -225,8 +227,8 @@ class HaroAPIClient(object):
             the given user
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
-                           "anticipate", pid, "user", user, "")
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                             "anticipate", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
         if name is not None:
@@ -237,7 +239,8 @@ class HaroAPIClient(object):
         except (HTTPError, RequestError) as e:
             raise IOError("Unable to make an anticipate prediction. Error was: {}".format(e))
         response = r.json()
-        return AnticipateResult(value=response['value'], pid=pid, name=name)
+        return AnticipateResult(value=response['value'], pid=pid, name=name,
+                                meta=_get_meta_from_response_headers(r))
 
     def custom(self, pid, user, name=None):
         """
@@ -251,8 +254,8 @@ class HaroAPIClient(object):
             CustomResult: containing the custom value
                    "
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
-                           "custom", pid, "user", user, "")
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                             "custom", pid, "user", user, "")
         headers = self._build_request_headers()
         params = {}
         if name is not None:
@@ -263,7 +266,8 @@ class HaroAPIClient(object):
         except (HTTPError, RequestError) as e:
             raise IOError("Unable to make a custom prediction. Error was: {}".format(e))
         response = r.json()
-        return CustomResult(value=response['value'], pid=pid, name=name)
+        return CustomResult(value=response['value'], pid=pid, name=name,
+                            meta=_get_meta_from_response_headers(r))
 
     def all_predictions(self, user, top=None, include_scores=False):
         """
@@ -276,8 +280,8 @@ class HaroAPIClient(object):
         Returns:
             list of PredictionResult: list of prediction results from active predictors
         """
-        url = os.path.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
-                           "all-predictions", "user", user, "")
+        url = posixpath.join(_PREDICTION_API_ENDPOINT, _PREDICTION_API_VERSION,
+                             "all-predictions", "user", user, "")
         headers = self._build_request_headers()
         params = {}
         if top is not None:
@@ -329,14 +333,16 @@ class PredictionResult(object):
     Represents a single  prediction for a user
     """
 
-    def __init__(self, pid, name):
+    def __init__(self, pid, name, meta=None):
         """
         Args:
             pid (str): Predictor identifier that generated this prediction
             name (str): Predictor custom that generated this prediction
+            meta (dict or None): additional meta information about the prediction
         """
         self.pid = pid
         self.name = name
+        self.meta = meta if meta is not None else {}
 
 
 class RankResult(PredictionResult):
@@ -344,15 +350,16 @@ class RankResult(PredictionResult):
     Represents a single ranking prediction for a user
     """
 
-    def __init__(self, entities, scores, pid, name):
+    def __init__(self, entities, scores, pid, name, meta=None):
         """
         Args:
             entities (list of str): list of item or categorical context values.
             scores (list of float or None): list of relative scores, populated when include_scores is used.
             pid (str): Predictor identifier that generated this prediction
             name (str): Predictor custom that generated this prediction
+            meta (dict or None): additional meta information about the prediction
         """
-        super(RankResult, self).__init__(pid, name)
+        super(RankResult, self).__init__(pid, name, meta)
         self.entities = entities
         self.scores = scores
 
@@ -365,14 +372,15 @@ class NumericPredictionResult(PredictionResult):
     Represents a single numerical prediction for a user
     """
 
-    def __init__(self, value, pid, name):
+    def __init__(self, value, pid, name, meta=None):
         """
         Args:
             value (float): numerical value predicted
             pid (str): Predictor identifier that generated this prediction
             name (str): Predictor custom that generated this prediction
+            meta (dict or None): additional meta information about the prediction
         """
-        super(NumericPredictionResult, self).__init__(pid, name)
+        super(NumericPredictionResult, self).__init__(pid, name, meta)
         self.value = value
 
     def __str__(self):
@@ -384,14 +392,15 @@ class AnticipateResult(PredictionResult):
     Represents a single anticipate prediction for a user
     """
 
-    def __init__(self, value, pid, name):
+    def __init__(self, value, pid, name, meta=None):
         """
         Args:
             value (float): probability of anticipated event happening for the given user
             pid (str): Predictor identifier that generated this prediction
             name (str): Predictor custom that generated this prediction
+            meta (dict or None): additional meta information about the prediction
         """
-        super(AnticipateResult, self).__init__(pid, name)
+        super(AnticipateResult, self).__init__(pid, name, meta)
         self.value = value
 
     def __str__(self):
@@ -403,15 +412,25 @@ class CustomResult(PredictionResult):
     Represents a custom prediction for a user [for advanced usage]
     """
 
-    def __init__(self, value, pid, name):
+    def __init__(self, value, pid, name, meta=None):
         """
         Args:
             value (float): numerical value predicted
             pid (str): Predictor identifier that generated this prediction
             name (str): Predictor custom that generated this prediction
+            meta (dict or None): additional meta information about the prediction
         """
-        super(CustomResult, self).__init__(pid, name)
+        super(CustomResult, self).__init__(pid, name, meta)
         self.value = value
 
     def __str__(self):
         return "CustomResult(value={self.value})".format(self=self)
+
+
+def _get_meta_from_response_headers(response):
+    """
+    Returns:
+        dict: meta data extracted from the response headers
+    """
+    return dict((k.replace("X-", "", 1), v)
+                for (k, v) in response.headers.items() if k.startswith("X-"))
