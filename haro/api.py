@@ -9,7 +9,7 @@ from requests import HTTPError
 from urllib3.exceptions import RequestError
 from six import string_types
 
-ALPHA_NUMERIC_REGEX = "^[\.a-zA-Z0-9_-]{1,128}$"
+ALPHA_NUMERIC_REGEX = r"^[\.a-zA-Z0-9_-]{1,128}$"
 
 _EVENTS_API_ENDPOINT = "https://events.haro.io"
 _EVENTS_API_VERSION = "v16.10"
